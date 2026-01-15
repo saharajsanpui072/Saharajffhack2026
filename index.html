@@ -1,1 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DPMods Verification Panel v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Modern Dark Theme */
+        :root {
+            --primary-color: #1DB954; /* Spotify Green */
+            --secondary-color: #282828;
+            --background-color: #121212;
+            --text-color: #FFFFFF;
+            --text-secondary: #B3B3B3;
+            --danger-color: #FF4D4D;
+        }
 
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 80px;
+        }
+
+        header {
+            background-color: var(--secondary-color);
+            padding: 15px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        h1 { margin: 0; font-size: 1.4rem; }
+
+        .container { padding: 20px; max-width: 800px; margin: 0 auto; }
+
+        /* User List Styles */
+        .user-item {
+            background-color: var(--secondary-color);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .user-item.expired { border-left-color: var(--danger-color); opacity: 0.8; }
+
+        .user-info strong { display: block; font-size: 1.1rem; color: var(--primary-color); }
+        .user-item.expired .user-info strong { color: var(--danger-color); }
+        .user-info span { color: var(--text-secondary); font-size: 0.85rem; }
+
+        .action-btn { background: none; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; margin-left: 10px; }
+        .action-btn:hover { color: var(--text-color); }
+        .delete-btn { color: var(--danger-color); }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: var(--text-secondary); font-size: 0.9rem; }
+        input[type="text"], input[type="url"], input[type="date"], textarea {
+            width: 100%; padding: 12px; border: 1px solid #444; border-radius: 6px; 
+            background-color: #333; color: white; box-sizing: border-box;
+        }
+
+        /* Navbar */
+        nav {
+            position: fixed; bottom: 0; width: 100%; height: 65px;
+            background-color: var(--secondary-color);
+            display: flex; justify-content: space-around; align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.5); z-index: 100;
+        }
+        .nav-item { color: var(--text-secondary); text-align: center; font-size: 0.75rem; cursor: pointer; }
+        .nav-item i { display: block; font-size: 1.4rem; margin-bottom: 4px; }
+        .nav-item.active { color: var(--primary-color); }
+        
+        .fab {
+            background-color: var(--primary-color); color: #000;
+            width: 55px; height: 55px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.8rem; transform: translateY(-20px);
+            box-shadow: 0 4px 10px rgba(29, 185, 84, 0.4);
+            cursor: pointer;
+        }
+
+        /* Modal & Utilities */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 200;
+        }
+        .modal-content {
+            background: var(--secondary-color); padding: 25px; border-radius: 12px; width: 90%; max-width: 400px;
+        }
+        .btn-primary {
+            background-color: var(--primary-color); color: #000; border: none;
+            padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; width: 100%;
+        }
+        .btn-secondary {
+            background-color: #444; color: #fff; border: none;
+            padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; margin-right: 10px;
+        }
+        .date-shortcuts { display: flex; gap: 8px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 5px;}
+        .date-shortcuts button {
+            background: #444; color: #ccc; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap;
+        }
+
+        #loading { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 300; justify-content: center; align-items: center; color: var(--primary-color); font-size: 1.5rem; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>DPMods Verif. Panel</h1>
+    </header>
+
+    <div class="container">
+        <div id="tabUsers">
+            <h2 style="color: var(--primary-color);">Device Keys</h2>
+            <div id="userList"></div>
+        </div>
+
+        <div id="tabSettings" style="display: none;">
+            <h2 style="color: var(--primary-color);">Global Config</h2>
+            
+            <div class="form-group">
+                <label>Admin Contact URL</label>
+                <input type="url" id="confAdminUrl" placeholder="https://t.me/...">
+            </div>
+
+            <div class="form-group">
+                <label>Marquee Message</label>
+                <textarea id="confMarquee" rows="3" placeholder="Scrolling text message..."></textarea>
+            </div>
+
+            <button class="btn-primary" onclick="saveSettings()">Save Configuration</button>
+        </div>
+    </div>
+
+    <nav>
+        <div class="nav-item active" onclick="switchTab('users')" id="navUsers">
+            <i class="fas fa-mobile-alt"></i> Devices
+        </div>
+        <div class="fab" onclick="openUserModal()">
+            <i class="fas fa-plus"></i>
+        </div>
+        <div class="nav-item" onclick="switchTab('settings')" id="navSettings">
+            <i class="fas fa-cog"></i> Config
+        </div>
+    </nav>
+
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Add Device</h3>
+            <input type="hidden" id="editIndex">
+            
+            <div class="form-group">
+                <label>Device ID</label>
+                <input type="text" id="inpID" placeholder="e.g. 3BA4A93F...">
+            </div>
+
+            <div class="form-group">
+                <label>Expiry Date</label>
+                <div class="date-shortcuts">
+                    <button onclick="setShortcut(1)">+1 Day</button>
+                    <button onclick="setShortcut(30)">+1 Mon</button>
+                    <button onclick="setShortcut(365)">+1 Yr</button>
+                </div>
+                <input type="date" id="inpExpiry">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 15px;">
+                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveUser()" style="width: auto;">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading">Updating GitLab...</div>
+
+    <script>
+        // ================= CONFIGURATION =================
+        const PROJECT_PATH = "DPModsYT/deviceverificationv2";
+        const FILE_NAME = "Key.json"; // <--- CHECK THIS FILENAME
+        const BRANCH = "main";
+        const TOKEN = "glpat-wbQa036QARfVbqaHXt-BTm86MQp1OmloNXZsCw.01.120t5rlei"; // Previous token
+        // =================================================
+
+        const API_URL = `https://gitlab.com/api/v4/projects/${encodeURIComponent(PROJECT_PATH)}/repository/files/${encodeURIComponent(FILE_NAME)}`;
+        let currentData = { AdminUrl: "", Marquee: "", Users: [] };
+
+        // --- Utils: Date Conversion (DD/MM/YYYY <-> YYYY-MM-DD) ---
+        function jsonDateToInput(dateStr) {
+            // Converts "27/12/2026" to "2026-12-27"
+            if(!dateStr) return "";
+            const parts = dateStr.split('/');
+            if(parts.length !== 3) return "";
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+
+        function inputDateToJson(dateStr) {
+            // Converts "2026-12-27" to "27/12/2026"
+            if(!dateStr) return "";
+            const parts = dateStr.split('-');
+            if(parts.length !== 3) return "";
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        function isExpired(jsonDate) {
+            const inputFormat = jsonDateToInput(jsonDate);
+            return new Date(inputFormat) < new Date(new Date().setHours(0,0,0,0));
+        }
+
+        // --- Core Functions ---
+        async function loadConfig() {
+            document.getElementById('loading').style.display = 'flex';
+            try {
+                const res = await fetch(`${API_URL}?ref=${BRANCH}`, {
+                    headers: { 'Private-Token': TOKEN }
+                });
+                if(!res.ok) throw new Error("Load Failed");
+                
+                const json = await res.json();
+                currentData = JSON.parse(atob(json.content));
+                
+                // Ensure structure
+                if(!currentData.Users) currentData.Users = [];
+                
+                renderUsers();
+                document.getElementById('confAdminUrl').value = currentData.AdminUrl || "";
+                document.getElementById('confMarquee').value = currentData.Marquee || "";
+                
+            } catch (e) {
+                alert("Error loading data: " + e.message);
+            }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        async function uploadConfig() {
+            document.getElementById('loading').style.display = 'flex';
+            try {
+                const content = btoa(JSON.stringify(currentData, null, 2));
+                const res = await fetch(API_URL, {
+                    method: 'PUT',
+                    headers: { 
+                        'Private-Token': TOKEN,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        branch: BRANCH,
+                        content: content,
+                        commit_message: "Update via Admin Panel",
+                        encoding: "base64"
+                    })
+                });
+                if(!res.ok) throw new Error("Save Failed");
+                alert("Saved successfully!");
+            } catch (e) {
+                alert("Error saving: " + e.message);
+            }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // --- UI Logic ---
+        function renderUsers() {
+            const list = document.getElementById('userList');
+            list.innerHTML = "";
+            
+            currentData.Users.forEach((u, index) => {
+                const expired = isExpired(u.Expiry);
+                const item = document.createElement('div');
+                item.className = `user-item ${expired ? 'expired' : ''}`;
+                item.innerHTML = `
+                    <div class="user-info">
+                        <strong>${u.ID}</strong>
+                        <span>Expiry: ${u.Expiry} ${expired ? '(EXPIRED)' : ''}</span>
+                    </div>
+                    <div>
+                        <button class="action-btn" onclick="openUserModal(${index})"><i class="fas fa-pen"></i></button>
+                        <button class="action-btn delete-btn" onclick="deleteUser(${index})"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tabUsers').style.display = tab === 'users' ? 'block' : 'none';
+            document.getElementById('tabSettings').style.display = tab === 'settings' ? 'block' : 'none';
+            document.getElementById('navUsers').classList.toggle('active', tab === 'users');
+            document.getElementById('navSettings').classList.toggle('active', tab === 'settings');
+        }
+
+        // --- Modal & Actions ---
+        function openUserModal(index = -1) {
+            const modal = document.getElementById('userModal');
+            document.getElementById('editIndex').value = index;
+            
+            if(index > -1) {
+                const u = currentData.Users[index];
+                document.getElementById('inpID').value = u.ID;
+                document.getElementById('inpExpiry').value = jsonDateToInput(u.Expiry);
+                document.getElementById('modalTitle').innerText = "Edit Device";
+            } else {
+                document.getElementById('inpID').value = "";
+                setShortcut(30); // Default 30 days
+                document.getElementById('modalTitle').innerText = "Add Device";
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').style.display = 'none';
+        }
+
+        function saveUser() {
+            const id = document.getElementById('inpID').value;
+            const dateInput = document.getElementById('inpExpiry').value;
+            const index = parseInt(document.getElementById('editIndex').value);
+
+            if(!id || !dateInput) return alert("Fill all fields");
+
+            const userObj = {
+                ID: id,
+                Expiry: inputDateToJson(dateInput)
+            };
+
+            if(index > -1) {
+                currentData.Users[index] = userObj;
+            } else {
+                currentData.Users.push(userObj);
+            }
+            
+            closeModal();
+            renderUsers();
+            uploadConfig(); // Auto save to cloud
+        }
+
+        function deleteUser(index) {
+            if(confirm("Delete this device?")) {
+                currentData.Users.splice(index, 1);
+                renderUsers();
+                uploadConfig();
+            }
+        }
+
+        function saveSettings() {
+            currentData.AdminUrl = document.getElementById('confAdminUrl').value;
+            currentData.Marquee = document.getElementById('confMarquee').value;
+            uploadConfig();
+        }
+
+        function setShortcut(days) {
+            const d = new Date();
+            d.setDate(d.getDate() + days);
+            document.getElementById('inpExpiry').value = d.toISOString().split('T')[0];
+        }
+
+        // Init
+        loadConfig();
+
+    </script>
+</body>
+</html>
